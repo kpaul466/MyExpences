@@ -80,6 +80,10 @@ const App: React.FC = () => {
       setSyncStatus('success');
     } catch (e: any) {
       console.error('Auto-sync error:', e);
+      if (e.message && e.message.includes('401')) {
+        setDriveToken(null);
+        localStorage.removeItem('myexpense_drive_token');
+      }
       setSyncStatus('error');
     }
   };
@@ -110,7 +114,10 @@ const App: React.FC = () => {
       } catch (e: any) {
         console.error('Sync error:', e);
         setSyncStatus('error');
-        if (e.message.includes('403')) {
+        if (e.message && e.message.includes('401')) {
+          setDriveToken(null);
+          localStorage.removeItem('myexpense_drive_token');
+        } else if (e.message && e.message.includes('403')) {
           alert('Google Drive API error (403). Please ensure the Google Drive API is enabled in your Google Cloud Console and you have granted the necessary permissions.');
         } else {
           alert('Failed to sync with Google Drive. Please try again.');
