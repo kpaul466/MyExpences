@@ -83,6 +83,7 @@ const App: React.FC = () => {
       if (e.message && e.message.includes('401')) {
         setDriveToken(null);
         localStorage.removeItem('myexpense_drive_token');
+        alert('Your Google Drive session has expired. Please reconnect to continue syncing.');
       }
       setSyncStatus('error');
     }
@@ -117,6 +118,7 @@ const App: React.FC = () => {
         if (e.message && e.message.includes('401')) {
           setDriveToken(null);
           localStorage.removeItem('myexpense_drive_token');
+          alert('Your Google Drive session has expired. Please reconnect to continue syncing.');
         } else if (e.message && e.message.includes('403')) {
           alert('Google Drive API error (403). Please ensure the Google Drive API is enabled in your Google Cloud Console and you have granted the necessary permissions.');
         } else {
