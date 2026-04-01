@@ -91,45 +91,8 @@ const App: React.FC = () => {
 
   const login = useGoogleLogin({
     scope: 'https://www.googleapis.com/auth/drive.appdata',
-    onSuccess: async (res) => {
-      const token = res.access_token;
-      const expiresIn = res.expires_in || 3500;
-      localStorage.setItem('myexpense_drive_token', JSON.stringify({ token, expiry: Date.now() + expiresIn * 1000 }));
-      setDriveToken(token);
-      setSyncStatus('syncing');
-      try {
-        const file = await googleDriveService.findBackupFile(token);
-        if (file) {
-          const data = await googleDriveService.downloadBackup(token, file.id);
-          if (data && localDB.getTransactions().length === 0) {
-            localDB.restoreFullState(data);
-            refreshData();
-          }
-          const newPrefs = { ...localDB.getPrefs(), googleDrive: { enabled: true, fileId: file.id, lastSyncTime: Date.now() } };
-          localDB.savePrefs(newPrefs);
-          setPrefs(newPrefs);
-        } else {
-          await performDriveSync(token);
-        }
-        setSyncStatus('success');
-      } catch (e: any) {
-        console.error('Sync error:', e);
-        setSyncStatus('error');
-        if (e.message && e.message.includes('401')) {
-          setDriveToken(null);
-          localStorage.removeItem('myexpense_drive_token');
-          alert('Your Google Drive session has expired. Please reconnect to continue syncing.');
-        } else if (e.message && e.message.includes('403')) {
-          alert('Google Drive API error (403). Please ensure the Google Drive API is enabled in your Google Cloud Console and you have granted the necessary permissions.');
-        } else {
-          alert('Failed to sync with Google Drive. Please try again.');
-        }
-      }
-    },
-    onError: () => {
-      setSyncStatus('error');
-      alert('Google Login failed. Please try again.');
-    }
+    ux_mode: 'redirect',
+    // The redirect_uri will default to the current URL, which is correct for GitHub Pages
   });
 
   const handleUpdatePin = () => {
@@ -204,18 +167,64 @@ const App: React.FC = () => {
       const currentPrefs = localDB.getPrefs();
       if (currentPrefs.pin) setIsAppLocked(true);
 
-      // Restore Google Drive token if it hasn't expired
-      const storedTokenData = localStorage.getItem('myexpense_drive_token');
-      if (storedTokenData) {
-        try {
-          const { token, expiry } = JSON.parse(storedTokenData);
-          if (Date.now() < expiry) {
-            setDriveToken(token);
-            setSyncStatus('success');
-          } else {
-            localStorage.removeItem('myexpense_drive_token');
+      // Check for Google Login redirect token in URL hash
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token=')) {
+        const params = new URLSearchParams(hash.substring(1));
+        const token = params.get('access_token');
+        const expiresIn = params.get('expires_in') || '3500';
+        
+        if (token) {
+          localStorage.setItem('myexpense_drive_token', JSON.stringify({ token, expiry: Date.now() + Number(expiresIn) * 1000 }));
+          setDriveToken(token);
+          setSyncStatus('syncing');
+          
+          // Clear hash from URL
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          
+          try {
+            const file = await googleDriveService.findBackupFile(token);
+            if (file) {
+              const data = await googleDriveService.downloadBackup(token, file.id);
+              if (data && localDB.getTransactions().length === 0) {
+                localDB.restoreFullState(data);
+                refreshData();
+              }
+              const newPrefs = { ...localDB.getPrefs(), googleDrive: { enabled: true, fileId: file.id, lastSyncTime: Date.now() } };
+              localDB.savePrefs(newPrefs);
+              setPrefs(newPrefs);
+              setSyncStatus('success');
+            } else {
+              await performDriveSync(token);
+            }
+          } catch (e: any) {
+            console.error('Sync error:', e);
+            setSyncStatus('error');
+            if (e.message && e.message.includes('401')) {
+              setDriveToken(null);
+              localStorage.removeItem('myexpense_drive_token');
+              alert('Your Google Drive session has expired. Please reconnect to continue syncing.');
+            } else if (e.message && e.message.includes('403')) {
+              alert('Google Drive API error (403). Please ensure the Google Drive API is enabled in your Google Cloud Console and you have granted the necessary permissions.');
+            } else {
+              alert('Failed to sync with Google Drive. Please try again.');
+            }
           }
-        } catch (e) {}
+        }
+      } else {
+        // Restore Google Drive token if it hasn't expired
+        const storedTokenData = localStorage.getItem('myexpense_drive_token');
+        if (storedTokenData) {
+          try {
+            const { token, expiry } = JSON.parse(storedTokenData);
+            if (Date.now() < expiry) {
+              setDriveToken(token);
+              setSyncStatus('success');
+            } else {
+              localStorage.removeItem('myexpense_drive_token');
+            }
+          } catch (e) {}
+        }
       }
     };
     initApp();
