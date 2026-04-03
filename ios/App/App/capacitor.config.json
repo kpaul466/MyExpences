@@ -2,6 +2,21 @@
 	"appId": "com.example.app",
 	"appName": "react-example",
 	"webDir": "dist",
-	"bundledWebRuntime": false,
-	"packageClassList": []
+	"plugins": {
+		"GoogleAuth": {
+			"scopes": [
+				"profile",
+				"email",
+				"https://www.googleapis.com/auth/drive.appdata"
+			],
+			"serverClientId": "your-google-client-id.apps.googleusercontent.com",
+			"forceCodeForRefreshToken": true
+		},
+		"CapacitorHttp": {
+			"enabled": true
+		}
+	},
+	"packageClassList": [
+		"GoogleAuth"
+	]
 }
