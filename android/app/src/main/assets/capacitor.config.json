@@ -1,5 +1,5 @@
 {
-	"appId": "com.example.app",
+	"appId": "com.kktechsol.myexpenses",
 	"appName": "react-example",
 	"webDir": "dist",
 	"plugins": {
